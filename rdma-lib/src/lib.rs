@@ -71,7 +71,7 @@ impl Context{
         modify_options.pkey_index(0);
         modify_options.port_num(IB_PORT);
         modify_options.qp_access_flags(mr::AccessFlags::empty());
-
+        qp.modify(modify_options)?;
         Ok(Context{recv_buf, send_buf, context, _pd: pd, recv_mr, send_mr, cq, qp, qpx})
         
     }
@@ -95,7 +95,10 @@ impl Context{
         modify_options.ah_attr(ah_option);
         match self.qp.modify(modify_options){
             Ok(_) => (),
-            Err(_) => return Err(std::io::Error::new(std::io::ErrorKind::Other,"Failed to modify QP to RTR"))
+            Err(e) =>{
+                    println!("{e}");
+                    return Err(std::io::Error::new(std::io::ErrorKind::Other,"Failed to modify QP to RTR"))
+                }
         };
 
         let mut modify_options = qp::ModifyOptions::default(); 
@@ -132,13 +135,13 @@ impl Context{
     }
 
 
-     fn post_send(&mut self, buf: *mut u8) -> Result<(), std::io::Error>{
+     fn post_send(&mut self) -> Result<(), std::io::Error>{
         self.qpx.start_wr(); 
         self.qpx.wr_id(PINGPONG_SEND_WRID);
         self.qpx.wr_flags(bindings::IBV_SEND_SIGNALED);
         self.qpx.post_send()?;
         
-        let buf = if buf.is_null() {self.send_buf} else {buf};
+        let buf = self.send_buf;
         self.qpx.set_sge(self.send_mr.lkey(), buf as u64, PACKET_SIZE as u32);
         self.qpx.wr_complete()?;
 
@@ -160,7 +163,7 @@ impl Context{
                     false => {
                     }
                     true => {
-                        self.post_send(std::ptr::null_mut())?
+                        self.post_send()?
                     }
                 }
                 *available_recv -= 1;
