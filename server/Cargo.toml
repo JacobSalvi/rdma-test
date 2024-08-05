@@ -1,0 +1,8 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rdma-lib = {path = "../rdma-lib/"}
+clap = "4.5.8"
